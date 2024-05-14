@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/home/robotics/Projects/C++/Grinding_Operations/build",
+  "command": "/usr/bin/g++ -DBOOST_ALL_NO_LIB -DBOOST_ATOMIC_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DBOOST_THREAD_DYN_LINK -isystem /usr/include/eigen3 -g -std=gnu++20 -o CMakeFiles/ur16_move.dir/grind.cpp.o -c /home/robotics/Projects/C++/Grinding_Operations/grind.cpp",
+  "file": "/home/robotics/Projects/C++/Grinding_Operations/grind.cpp"
+},
+{
+  "directory": "/home/robotics/Projects/C++/Grinding_Operations/build",
+  "command": "/usr/bin/g++ -DBOOST_ALL_NO_LIB -DBOOST_ATOMIC_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DBOOST_THREAD_DYN_LINK -isystem /usr/include/eigen3 -g -std=gnu++20 -o CMakeFiles/ur16_move.dir/UrRobot.cpp.o -c /home/robotics/Projects/C++/Grinding_Operations/UrRobot.cpp",
+  "file": "/home/robotics/Projects/C++/Grinding_Operations/UrRobot.cpp"
+}
+]

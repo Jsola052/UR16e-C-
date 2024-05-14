@@ -1,0 +1,172 @@
+#ifndef __AUXILIARY__
+#define __AUXILIARY__
+
+#include <ostream>
+#include <vector>
+#include <Eigen/Dense>
+
+constexpr double rad2deg(double rad)
+{
+    return rad * 180 / 3.1416;
+}
+
+constexpr auto deg2rad(auto deg)
+{
+    return deg * 3.1416 / 180;
+}
+
+void printVector(std::vector<std::vector<double>> &waypoints) {
+    for (const auto& row : waypoints) {
+        // Loop through each element in the row and print it
+        for (const auto& element : row)
+            std::cout << element << " ";
+        std::cout << std::endl;
+    }
+}
+void printVector(std::vector<double> &waypoint) {
+    for (const auto& element : waypoint) {
+        // Loop through each element in the row and print it
+            std::cout << element << " " << std::endl;
+    }
+}
+
+std::vector<double> eigenToVec(const Eigen::Vector3d &ev)
+{
+    return std::vector<double>(ev.data(), ev.data() + ev.size());
+}
+
+Eigen::Vector3d vecToEigen(std::vector<double> v)
+{
+    return Eigen::Map<const Eigen::VectorXd>(v.data(), v.size());
+}
+
+template <typename T>
+constexpr std::vector<T> normalize(const std::vector<T> &v)
+{
+    Eigen::Vector3d eigen_vector = vecToEigen(v);
+    auto norm = eigen_vector.norm();
+    if (norm == 0)
+        return v;
+    Eigen::Vector3d normalizedEigenVector = eigen_vector / norm;
+    std::vector<T> normalizedVector = eigenToVec(normalizedEigenVector);
+    return normalizedVector;
+}
+
+Eigen::Vector3d normalize(const Eigen::Vector3d &v)
+{
+    double norm = v.norm();
+    if (norm == 0)
+        return v;
+    return v / norm;
+}
+
+// cross product for two vectors of type Vector
+
+std::vector<double> cross(const std::vector<double> &v1, const std::vector<double> &v2)
+{
+    Eigen::Vector3d eigenVector1 = vecToEigen(v1);
+    Eigen::Vector3d eigenVector2 = vecToEigen(v2);
+    Eigen::VectorXd result = eigenVector1.cross(eigenVector2);
+    std::vector<double> vecResult = eigenToVec(result);
+    return vecResult;
+}
+template <typename T>
+constexpr std::vector<T> offset(const std::vector<T> &corner, double offset, const std::vector<T> &normal, bool is_positive)
+{
+    if (is_positive)
+        return corner + offset * normal;
+    else
+        return corner - offset * normal;
+}
+
+Eigen::Vector3d offset(const Eigen::Vector3d &point, double distance, const Eigen::Vector3d &direction, bool is_positive)
+{
+    if (is_positive)
+        return point + distance * direction;
+    else
+        return point - distance * direction;
+}
+
+
+ std::vector<double> eulerAngles(const std::vector<double> &normal)
+{
+    Eigen::Vector3d targetNormal = vecToEigen(normal);
+    Eigen::Vector3d initialVector(0.0, 0.0, 1.0);
+    Eigen::Vector3d targetNormalNorm = normalize(targetNormal);
+    // Calculate the axis of rotation
+    Eigen::Vector3d rotationAxis = initialVector.cross(targetNormalNorm);
+    Eigen::Vector3d rotationAxisNormalized = normalize(rotationAxis);
+    // Calculate the angle between initialVector and targetNormal
+    double cosAngle = initialVector.dot(targetNormalNorm);
+    double angle = std::acos(cosAngle);
+    // Calculate the quaternion
+    double halfAngle = angle / 2;
+    double sinHalfAngle = std::sin(halfAngle);
+    double qx = rotationAxisNormalized.x() * sinHalfAngle;
+    double qy = rotationAxisNormalized.y() * sinHalfAngle;
+    double qz = rotationAxisNormalized.z() * sinHalfAngle;
+    double qw = std::cos(halfAngle);
+    // Convert the quaternion to Euler angles (in ZYX rotation order)
+    double roll = std::atan2(2.0 * (qw * qx + qy * qz), 1.0 - 2.0 * (qx * qx + qy * qy));
+    double pitch = std::asin(2.0 * (qw * qy - qz * qx));
+    double yaw = std::atan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz));
+    return std::vector<double>{roll, pitch, yaw};
+}
+
+std::vector<std::vector<double>> generateWaypoints(
+    double gridSize, double liftDistance, double lower, double rx, double ry, double rz, 
+    const std::vector<Eigen::Vector3d> &points) {
+    if (points.size() != 4) {
+        throw std::invalid_argument("Expected exactly 4 points.");
+    }
+    Eigen::Vector3d op1 = points[0];
+    Eigen::Vector3d op2 = points[1];
+    Eigen::Vector3d op3 = points[2];
+    Eigen::Vector3d op4 = points[3];
+    // Calculate the normal vector
+    Eigen::Vector3d normalVector = normalize((op2 - op1).cross(op3 - op1));
+    Eigen::Vector3d p1 = offset(op1, lower, normalVector, false);
+    Eigen::Vector3d p2 = offset(op2, lower, normalVector, false);
+    Eigen::Vector3d p3 = offset(op3, lower, normalVector, false);
+    Eigen::Vector3d p4 = offset(op4, lower, normalVector, false);
+    normalVector = normalize((p2 - p1).cross(p3 - p1));
+    Eigen::Vector3d moveVector = p2 - p1;
+    Eigen::Vector3d shiftVector = normalize(p4 - p1) * gridSize;
+    int numPasses = static_cast<int>((p4 - p1).norm() / gridSize) + 1;
+    std::vector<std::vector<double>> waypoints;
+    Eigen::Vector3d currentPosition = p1;
+    for (int passNum = 0; passNum < numPasses; ++passNum) {
+        Eigen::Vector3d moveEnd = currentPosition + moveVector;
+        waypoints.push_back(std::vector<double>{currentPosition[0], currentPosition[1], currentPosition[2], rx, ry, rz});
+        waypoints.push_back(std::vector<double>{moveEnd[0], moveEnd[1], moveEnd[2], rx, ry, rz});
+        Eigen::Vector3d liftedPosition = moveEnd - liftDistance * normalVector;
+        waypoints.push_back(std::vector<double>{liftedPosition[0], liftedPosition[1], liftedPosition[2], rx, ry, rz});
+        if (passNum < numPasses - 1) {
+            Eigen::Vector3d nextStartAtLiftedHeight = currentPosition + shiftVector + liftDistance * normalVector;
+            waypoints.push_back(std::vector<double>{nextStartAtLiftedHeight[0], nextStartAtLiftedHeight[1], nextStartAtLiftedHeight[2], rx, ry, rz});
+            Eigen::Vector3d nextStartLowered = nextStartAtLiftedHeight - liftDistance * normalVector;
+            waypoints.push_back(std::vector<double>{nextStartLowered[0], nextStartLowered[1], nextStartLowered[2], rx, ry, rz});
+            currentPosition = nextStartLowered;
+        }
+    }
+    return waypoints;
+}
+template <typename T>
+auto rad2deg(const std::vector<T> &rad)
+{
+    auto v = rad;
+    for (auto &x : v)
+        x *= 180 / 3.1416;
+    return v;
+}
+
+template <typename T>
+auto deg2rad(const std::vector<T> &deg)
+{
+    auto v = deg;
+    for (auto &x : v)
+        x *= 3.1416 / 180;
+    return v;
+}
+
+#endif

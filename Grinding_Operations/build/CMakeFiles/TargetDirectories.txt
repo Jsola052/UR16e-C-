@@ -1,0 +1,3 @@
+/home/robotics/Projects/C++/Grinding_Operations/build/CMakeFiles/ur16_move.dir
+/home/robotics/Projects/C++/Grinding_Operations/build/CMakeFiles/edit_cache.dir
+/home/robotics/Projects/C++/Grinding_Operations/build/CMakeFiles/rebuild_cache.dir
